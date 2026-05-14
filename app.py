@@ -21,6 +21,16 @@ env_path = project_root / '.env'
 # Force reload with override=True to ensure latest values
 load_dotenv(str(env_path), override=True)
 
+# Get API key from Streamlit secrets (Streamlit Cloud) or environment (.env for local)
+try:
+    # Try Streamlit secrets first (for Streamlit Cloud)
+    api_key_from_secrets = st.secrets.get("GOOGLE_API_KEY")
+    if api_key_from_secrets:
+        os.environ["GOOGLE_API_KEY"] = api_key_from_secrets
+except (FileNotFoundError, AttributeError):
+    # Fall back to environment variable for local development
+    pass
+
 # Verify API key is loaded
 api_key_loaded = os.getenv("GOOGLE_API_KEY")
 if not api_key_loaded:
