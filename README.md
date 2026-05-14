@@ -16,19 +16,21 @@ A production-ready AI prototype system for reviewing supplement/nutraceutical fo
 
 This solution implements **three meaningful AI/ML components** as required:
 
-1. **LLM Reasoning** (Google Gemini 1.5 Flash)
-   - Structured output extraction using Pydantic
-   - Safety analysis and claim validation
-   - Scientific observation generation
+1. **LLM Reasoning** (Google Gemini Flash Latest)
+   - Structured output extraction using Pydantic models
+   - Safety analysis and claim validation using complex reasoning
+   - Scientific observation generation with medical knowledge
    
-2. **Embeddings** (Google Generative AI embeddings)
-   - Semantic understanding of ingredient properties
-   - Query interpretation for search functionality
+2. **Embeddings** (Google Generative AI - 3072-dimensional embeddings)
+   - Semantic understanding of ingredient properties and effects
+   - Query interpretation for intelligent search functionality
+   - 3072-dimensional embeddings for precise similarity matching
    
-3. **Vector Search** (ChromaDB)
+3. **Vector Search** (ChromaDB with LangChain integration)
    - Similarity search for ingredient discovery
-   - Retrieval pipeline for finding related ingredients
+   - Retrieval pipeline with metadata filtering
    - Example: "sleep support" finds relevant ingredients like Magnesium, L-Theanine, Melatonin
+   - k=5 results for balanced search performance
 
 ## 🚀 Quick Start
 
@@ -57,15 +59,26 @@ GOOGLE_API_KEY=your_actual_api_key_here
 
 **Get your API key:**
 1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Click "Create API Key"
+2. Click "Create API Key" or use existing key
 3. Copy the key and paste it in `.env`
+4. File will be automatically loaded by the app
+
+**Security Note**: 
+- `.env` is in `.gitignore` and will never be committed
+- The app validates the API key on startup
+- If the key is missing or invalid, you'll see a clear error message with next steps
 
 ### 5. Run Locally
 ```bash
 streamlit run app.py
 ```
 
-The app will open at `http://localhost:8501`
+The app will open at `http://localhost:8501` and automatically load your `.env` file.
+
+**First Run Tips:**
+- The first analysis may take 30-60 seconds as the LLM processes the input
+- The vector database (ChromaDB) will be created automatically in `./chroma_db/`
+- Subsequent searches will be faster due to caching
 
 ## 📋 Usage
 

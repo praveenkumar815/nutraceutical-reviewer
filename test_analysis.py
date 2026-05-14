@@ -4,11 +4,20 @@ Can be run from command line: python test_analysis.py
 """
 
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel
 
-load_dotenv()
+# Load environment variables from .env file
+# Try multiple paths to ensure .env is loaded regardless of working directory
+script_dir = Path(__file__).parent
+env_path = script_dir / '.env'
+load_dotenv(str(env_path), override=False)
+
+# Also try loading from current directory as fallback
+if not os.getenv("GOOGLE_API_KEY"):
+    load_dotenv(dotenv_path='.env', override=False)
 
 class Ingredient(BaseModel):
     name: str
@@ -34,7 +43,7 @@ def test_formulation_analysis():
     try:
         # Initialize LLM
         print("\n🔄 Initializing Gemini AI...")
-        llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.2)
+        llm = ChatGoogleGenerativeAI(model="gemini-flash-latest", temperature=0.2, api_key=api_key)
         
         # Test formulation
         test_product = "PowerBoost Energy"

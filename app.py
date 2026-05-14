@@ -1,12 +1,31 @@
 import os
+import sys
 import streamlit as st
+from pathlib import Path
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 from ingredient_database import check_ingredient_safety, PROBLEMATIC_CLAIMS
 
-load_dotenv()
+# Configure Streamlit to use secrets from .env file
+# Must be done before any other Streamlit operations
+if 'STREAMLIT_ENV' not in os.environ:
+    os.environ['STREAMLIT_ENV'] = 'local'
+
+# Load environment variables from .env file
+# Try multiple paths to ensure .env is loaded regardless of working directory
+project_root = Path(__file__).parent
+env_path = project_root / '.env'
+
+# Force reload with override=True to ensure latest values
+load_dotenv(str(env_path), override=True)
+
+# Verify API key is loaded
+api_key_loaded = os.getenv("GOOGLE_API_KEY")
+if not api_key_loaded:
+    # Try alternative loading method
+    load_dotenv(dotenv_path='.env', override=True)
 
 # Configure page
 st.set_page_config(
@@ -41,21 +60,77 @@ class FormulationReview(BaseModel):
 
 @st.cache_resource
 def init_ai_components():
-    """Initialize AI components with error handling."""
+    """Initialize AI components with comprehensive error handling."""
     try:
-        llm_instance = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.2)
-        embed_instance = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-        v_store = Chroma(
-            embedding_function=embed_instance,
-            persist_directory="./chroma_db"
-        )
+        # Check API key from environment
+        api_key = os.getenv("GOOGLE_API_KEY")
+        
+        if not api_key or api_key.strip() == "":
+            raise ValueError(
+                "GOOGLE_API_KEY is not set in the environment. Please:\n"
+                "1. Create a .env file in the project root\n"
+                "2. Add: GOOGLE_API_KEY=your_api_key_here\n"
+                "3. Restart the Streamlit app"
+            )
+        
+        if len(api_key) < 30:
+            raise ValueError(f"API key appears invalid (too short: {len(api_key)} chars)")
+        
+        # Initialize LLM
+        try:
+            llm_instance = ChatGoogleGenerativeAI(
+                model="gemini-flash-latest",
+                temperature=0.2,
+                api_key=api_key,
+                timeout=30
+            )
+            # Test the LLM with a simple call
+            llm_instance.invoke("test")
+        except Exception as e:
+            raise ValueError(f"LLM initialization failed: {str(e)}")
+        
+        # Initialize embeddings
+        try:
+            embed_instance = GoogleGenerativeAIEmbeddings(
+                model="models/gemini-embedding-001",
+                api_key=api_key,
+                timeout=30
+            )
+        except Exception as e:
+            raise ValueError(f"Embeddings initialization failed: {str(e)}")
+        
+        # Initialize vector store
+        try:
+            v_store = Chroma(
+                embedding_function=embed_instance,
+                persist_directory="./chroma_db"
+            )
+        except Exception as e:
+            raise ValueError(f"Vector store initialization failed: {str(e)}")
+        
         return llm_instance, v_store
     except Exception as e:
-        st.error(f"Failed to initialize AI components: {str(e)}")
-        st.info("Please ensure your GOOGLE_API_KEY is set correctly.")
         return None, None
 
 llm, vector_store = init_ai_components()
+
+# Check if initialization was successful
+if llm is None or vector_store is None:
+    st.error("❌ Failed to initialize AI components")
+    st.warning("""
+    **Setup Required:**
+    
+    1. Make sure you have a `.env` file in the project root directory
+    2. Add your Google API key: `GOOGLE_API_KEY=your_api_key_here`
+    3. Save the file
+    4. Refresh this page
+    
+    **Get your API key:**
+    - Visit: https://makersuite.google.com/app/apikey
+    - Create a new API key
+    - Copy it to your `.env` file
+    """)
+    st.stop()
 
 # Page Title
 st.title("💊 Nutraceutical Formulation AI Reviewer")
